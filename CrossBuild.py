@@ -81,11 +81,10 @@ class CrosswordGrid:
                 fails += 1
                 if fails > max_iterations:
                     print("Failed to generate a valid crossword grid...")
-                    return
+                    return False
                 print("Failed to generate a valid crossword grid after 100 iterations. Restarting...")
                 self.reset()
-                self.generate_black_squares()
-                return
+                return self.generate_black_squares()
 
             cols_to_search = self.size[1] - 1
             low_range = 0 if iterations > 2 else 1
@@ -123,10 +122,10 @@ class CrosswordGrid:
         #If the number of black squares exceeds the maximum allowed, reset and try again
         if black_squares_count > max_black_squares:
             self.reset()
-            self.generate_black_squares()
-            return
+            return self.generate_black_squares()
 
         self.update_words()  # Update the words after placing black squares"""
+        return True
 
     def place_edge_black_squares(self):
         """Places edge squares on the top and left edge of the grid. Assumes that the grid is not a mini."""
