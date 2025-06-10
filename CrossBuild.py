@@ -449,7 +449,28 @@ class CrosswordGrid:
             self.size = (len(self.grid), len(self.grid[0])) if self.grid else (0, 0)
         
 
+class CrosswordPuzzle():
+    def __init__(self, grid):
+        """Initializes a crossword puzzle with a given grid."""
+        self.grid = grid
+        self.clue_dict = {}  # To be populated with clues for the words
+        self.word_list = []  # To be populated with words from the grid
 
+    def generate_clues(self):
+        """Generates clues for the words in the crossword puzzle."""
+        pass  # Implementation to be added later
+
+    def display_grid(self):
+        """Displays the crossword puzzle."""
+        self.grid.display(info=True)
+
+    def display_clues(self):
+        """Displays the clues for the crossword puzzle."""
+        print("Clues:")
+        for key, word in self.grid.across_words.items():
+            print(f"{key} (Across): {word.clue}")
+        for key, word in self.grid.down_words.items():
+            print(f"{key} (Down): {word.clue}")
 
 
 def main():

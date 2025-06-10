@@ -1,4 +1,6 @@
 import re
+import csv
+import random
 
 
 class WordList():
@@ -50,6 +52,34 @@ class WordList():
     def __repr__(self):
         """Returns a string representation of the word list."""
         return f"WordList with {len(self.words)} words."
+    
+
+class ClueDict():
+    def __init__(self):
+        """Reads in words and clues from ClueDict.csv and stores them in a dictionary. Assumes 
+        that the CSV file contains two columns: the first column is the word in all caps
+        and the second column is the clue."""
+        
+        self.clue_dict = {}
+
+        with open("ClueDict.csv", "r") as file:
+            reader = csv.reader(file)
+            for row in reader:
+                word, clue = row
+                if word not in self.clue_dict:
+                    self.clue_dict[word] = []
+                self.clue_dict[word].append(clue)
+
+    def get_clues_for_word(self, word):
+        """Returns a list of clues for a given word."""
+        return self.clue_dict.get(word, [])
+    
+    def get_random_clue_for_word(self, word):
+        """Returns a random clue for a given word."""
+        clues = self.get_clues_for_word(word)
+        if clues:
+            return random.choice(clues)
+        return None
     
 
     
