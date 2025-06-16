@@ -239,12 +239,12 @@ def main():
                 elif event.key == pygame.K_SPACE:
                     # Regenerate the crossword when space is pressed using the worker thread
                     crossword_builder_thread.start()  # Start the crossword builder thread
-                    font = pygame.font.Font(None, 36)
-                    text = font.render("Generating black squares...", True, "black")
-                    text_center = (panels["status bar"].location[0] + 50, panels["workflow"].location[1] + 50)
-                    text_rect = text.get_rect(center=text_center)
-                    screen.blit(text, text_rect)
-                    pygame.display.flip()
+                    # font = pygame.font.Font(None, 36)
+                    # text = font.render("Generating black squares...", True, "black")
+                    # text_center = (panels["status bar"].location[0] + 50, panels["workflow"].location[1] + 50)
+                    # text_rect = text.get_rect(center=text_center)
+                    # screen.blit(text, text_rect)
+                    # pygame.display.flip()
 
 
             

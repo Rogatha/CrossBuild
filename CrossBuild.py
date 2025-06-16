@@ -61,8 +61,8 @@ class CrosswordGrid:
                                max_iterations=100, default_black_square_weight=0.75, 
                                default_black_island_weight=0.4, default_black_island_row_col_weight=0.011,
                                default_black_island_row_col_weight_offset=0.335, row_col_reset_chance=0.25, 
-                               max_word_count=152):
-        """Generates a grid with black squares (represented by '#') and white squares (represented by '•').
+                               max_word_count=152, row_col_3_reset_chance=0.9):
+        """Generates a grid with black squares (represented by '#') and white squares (represented by ' ').
         Rules for crossword grids:
         1. All words must be at least 3 letters long.
         2. All letters in all words must cross another word.
@@ -156,9 +156,22 @@ class CrosswordGrid:
                             black_squares_count -= 1
                         self.grid[row][col] = ' '
 
-            
+            #Force black square placement in row 3 or column 3
+            if random.random() < 0.1:
+                if self.black_islands_in_row(2) == 0 and self.black_islands_in_col(2) == 0:
+                    if random.random() < 0.5:
+                        self.force_black_square_in_col(2, black_squares_count, max_black_squares)
+                    else:
+                        self.force_black_square_in_row(2, black_squares_count, max_black_squares)
+                elif self.black_islands_in_row(2) == 0:
+                    self.force_black_square_in_row(2, black_squares_count, max_black_squares)
+                elif self.black_islands_in_col(2) == 0:
+                    self.force_black_square_in_col(2, black_squares_count, max_black_squares)
+
+
             self.num_black_squares = black_squares_count
             self.black_square_proportion = round(black_squares_count / total_cells, 3)
+        #End while loop
 
         #If the number of black squares exceeds the maximum allowed, reset and try again
         if black_squares_count > max_black_squares:
@@ -172,18 +185,18 @@ class CrosswordGrid:
             self.reset()
             return self.generate_black_squares()
         elif self.black_islands_in_row(2) == 0:
-            if random.random() < 0.75:
+            if random.random() < row_col_3_reset_chance:
                 print("No black squares in row 3. Resetting...")
                 self.reset()
                 return self.generate_black_squares()
         elif self.black_islands_in_col(2) == 0:
-            if random.random() < 0.75:
+            if random.random() < row_col_3_reset_chance:
                 print("No black squares in column 3. Resetting...")
                 self.reset()
                 return self.generate_black_squares()
         
         self.update_words()  # Update the words after placing black squares"""
-        
+
         if len(self.across_words) + len(self.down_words) > max_word_count:
             print("Exceeded maximum number of words. Resetting...")
             self.reset()
@@ -235,6 +248,11 @@ class CrosswordGrid:
         """Returns True if a black square can be placed at (row, col) without violating the rules,
         False, otherwise"""
 
+        #If in (2, 2) return false
+        if (row == 2 and col == 2) or (row == 2 and col == self.size[1] - 3) \
+        or (row == self.size[0] - 3 and col == 2) or (row == self.size[0] - 3 and col == self.size[1] - 3):
+            return False
+
         #Populate the grid with a black square at (row, col) and its symmetric counterpart
         symmetric_row = self.size[0] - 1 - row
         symmetric_col = self.size[1] - 1 - col
@@ -243,8 +261,8 @@ class CrosswordGrid:
 
         #Ensure that placing black squares does not exceed the maximum allowed
         if black_squares_count >= max_black_squares:
-            self.grid[row][col] = '•'
-            self.grid[symmetric_row][symmetric_col] = '•'
+            self.grid[row][col] = ' '
+            self.grid[symmetric_row][symmetric_col] = ' '
             return False
         
         #Make sure this black square or its symmetric counterpart does not create any words 
@@ -258,8 +276,8 @@ class CrosswordGrid:
                     r += dir[0]
                     c += dir[1]
                 if count < 3 and count != 0:
-                    self.grid[row][col] = '•'
-                    self.grid[symmetric_row][symmetric_col] = '•'
+                    self.grid[row][col] = ' '
+                    self.grid[symmetric_row][symmetric_col] = ' '
                     return False
         
         #Make sure all letters are seen by two words (Check all letters in all new words that are 
@@ -269,8 +287,8 @@ class CrosswordGrid:
                 r, c = test_row + dir[0], test_col + dir[1]
                 if 0 <= r < self.size[0] and 0 <= c < self.size[1] and self.grid[r][c] != '#':
                     if not self.is_crossed(r, c):
-                        self.grid[row][col] = '•'
-                        self.grid[symmetric_row][symmetric_col] = '•'
+                        self.grid[row][col] = ' '
+                        self.grid[symmetric_row][symmetric_col] = ' '
                         return False
                     
                     r += dir[0]
@@ -281,11 +299,83 @@ class CrosswordGrid:
 
         #Make sure grid is continuously connected
         if not self.connected((0, 0), (self.size[0] - 1, self.size[1] - 1)):
-            self.grid[row][col] = '•'
-            self.grid[symmetric_row][symmetric_col] = '•'
+            self.grid[row][col] = ' '
+            self.grid[symmetric_row][symmetric_col] = ' '
             return False
 
         return True
+    
+    def force_black_square_in_row(self, row, black_squares_count, max_black_squares):
+        """Forces a black square in the given row. Assumes that the row has no black squares.
+        Will remove random black squares from a determined range of rows to make space for the 
+        new black square if need be."""
+
+        possibilities = []
+        for col in range(3, self.size[1] - 3):
+            if self.validate_black_square(row, col, black_squares_count, max_black_squares):
+                possibilities.append(col)
+
+        if possibilities:
+            black_square_column = random.choice(possibilities)  # Randomly choose a column from the possibilities
+            self.grid[row][black_square_column] = '#'
+            self.grid[self.size[0] - 1 - row][self.size[1] - 1 - black_square_column] = '#'
+            self.num_black_squares += 2  # Increment the count of black squares by 2 for the symmetric counterpart
+            return True
+        
+        #If no options were found, remove a random black square from the three adjacent rows on either side
+        #that are not in the first or last three rows or cols of the grid
+        nearby_black_squares = []
+        for r in range(row - 3, row + 4):
+            if not (r < 3 or r >= self.size[1] - 3):
+                for c in range(3, self.size[0] - 3):
+                    if self.grid[r][c] == '#':
+                        nearby_black_squares.append((r, c))
+
+        if not nearby_black_squares:
+            return False
+        
+        random_square_to_remove = random.choice(nearby_black_squares)
+        self.remove_black_square(random_square_to_remove[0], random_square_to_remove[1])
+        return self.force_black_square_in_col(row, black_squares_count - 2, max_black_squares)
+                
+    def force_black_square_in_col(self, col, black_squares_count, max_black_squares):
+        """Forces a black square in the given column. Assumes that the column has no black squares.
+        Returns True if a black square was successfully placed, False otherwise."""
+
+        possibilities = []
+        for row in range(3, self.size[1] - 3):
+            if self.validate_black_square(row, col, black_squares_count, max_black_squares):
+                possibilities.append(col)
+        
+        if possibilities:
+            black_square_row = random.choice(possibilities)  # Randomly choose a column from the possibilities
+            self.grid[black_square_row][col] = '#'
+            self.grid[self.size[0] - 1 - black_square_row][self.size[1] - 1 - col] = '#'
+            self.num_black_squares += 2
+            return True
+        
+        #If no options were found, remove a random black square from the three adjacent cols on either side
+        #that are not in the first or last three rows or cols of the grid
+        nearby_black_squares = []
+        for c in range(col - 3, col + 4):
+            if not (c < 3 or c >= self.size[1] - 3):
+                for r in range(3, self.size[0] - 3):
+                    if self.grid[r][c] == '#':
+                        nearby_black_squares.append((r, c))
+        
+        if not nearby_black_squares:
+            return False
+        
+        random_square_to_remove = random.choice(nearby_black_squares)
+        self.remove_black_square(random_square_to_remove[0], random_square_to_remove[1])
+        return self.force_black_square_in_col(col, black_squares_count - 2, max_black_squares)
+                
+    
+    def remove_black_square(self, row, col):
+        """Removes a black square at (row, col) and its symmetric counterpart."""
+        if self.grid[row][col] == '#':
+            self.grid[row][col] = ' '
+            self.grid[self.size[0] - 1 - row][self.size[1] - 1 - col] = ' '
     
     def good_edge_coverage(self, num_islands):
         """Checks to make sure there are at least the given number of islands of black squares on 
@@ -455,7 +545,7 @@ class CrosswordGrid:
     
     def reset(self):
         """Resets the crossword grid to its initial state."""
-        self.grid = [['•' for _ in range(self.size[1])] for _ in range(self.size[0])]
+        self.grid = [[' ' for _ in range(self.size[1])] for _ in range(self.size[0])]
         self.num_black_squares = 0
         self.black_square_percentage = 0
         self.across_words.clear()
