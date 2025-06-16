@@ -1,6 +1,16 @@
 import random
 
 
+"""TO DO:
+1. import and clean up word lists for use in WordList.txt and ClueDict.csv
+2. Test WordList and ClueDict classes
+3. Optimize parameters for CrosswordGrid.generate_black_squares() method
+4. Implement CrosswordPuzzle.generate_clues() method
+5. Import PyGame and implement GUI for crossword puzzle generation
+6. Add file headers and a README"""
+
+
+
 def generate_random_numbers(n, min_value, max_value):
     """Generates a list of n random numbers between min_value and max_value."""
     return [random.randint(min_value, max_value) for _ in range(n)]
@@ -36,7 +46,7 @@ class CrosswordGrid:
     def __init__(self, size):
         """Size is a tuple (rows, columns) representing the grid dimensions."""
         self.size = size
-        self.grid = [['•' for _ in range(size[0])] for _ in range(size[1])]
+        self.grid = [[' ' for _ in range(size[0])] for _ in range(size[1])]
 
         self.mini = False
         if self.size[0] <= 10 or self.size[1] <= 10:
@@ -47,10 +57,11 @@ class CrosswordGrid:
         self.across_words = {} #To be populated with CrosswordWord objects
         self.down_words = {} #Same here
 
-    def generate_black_squares(self, max_black_squares_p=0.3, min_black_squares_p=0.2, iterations_per_try=100,
+    def generate_black_squares(self, max_black_squares_p=0.225, min_black_squares_p=0.175, iterations_per_try=100,
                                max_iterations=100, default_black_square_weight=0.75, 
                                default_black_island_weight=0.4, default_black_island_row_col_weight=0.011,
-                               default_black_island_row_col_weight_offset=0.335):
+                               default_black_island_row_col_weight_offset=0.335, row_col_reset_chance=0.25, 
+                               max_word_count=152):
         """Generates a grid with black squares (represented by '#') and white squares (represented by '•').
         Rules for crossword grids:
         1. All words must be at least 3 letters long.
@@ -73,24 +84,19 @@ class CrosswordGrid:
         min_black_squares = int(total_cells * min_black_squares_p)
 
         iterations = 0
-        fails = 0
         #Random placement of interior squares until an acceptable number of black squares is reached
         while black_squares_count < min_black_squares:
             iterations += 1
             if iterations > iterations_per_try:
-                fails += 1
-                if fails > max_iterations:
-                    print("Failed to generate a valid crossword grid...")
-                    return False
                 print("Failed to generate a valid crossword grid after 100 iterations. Restarting...")
                 self.reset()
                 return self.generate_black_squares()
 
             cols_to_search = self.size[1] - 1
-            low_range = 0 if iterations > 2 else 1
-            for row in range(low_range, self.size[0]):
+            # low_range = 0 if iterations > 2 else 1
+            for row in range(1, self.size[0]):
                 cols_to_search -= 1
-                for col in range(low_range, cols_to_search):
+                for col in range(1, cols_to_search):
                     if self.grid[row][col] == '#':
                         continue
                     black_square_weight = default_black_square_weight #Default weight for black square placement
@@ -116,15 +122,73 @@ class CrosswordGrid:
                         else:
                             black_squares_count += 2  #Count both the square and its symmetric counterpart
             
+            #Randomly delete the center row or column of the grid
+            if random.random() < row_col_reset_chance:
+                odd_rows = False
+                odd_cols = False
+                if self.size[0] % 2 == 1:  #Odd number of rows
+                    odd_rows = True
+                if self.size[1] % 2 == 1:
+                    odd_cols = True
+                if odd_rows and odd_cols:
+                    if random.random() < 0.5:
+                        row = self.size[0] // 2
+                        for col in range(self.size[1]):
+                            if self.grid[row][col] == '#':
+                                black_squares_count -= 1
+                            self.grid[row][col] = ' '
+                    else:
+                        col = self.size[1] // 2
+                        for row in range(self.size[0]):
+                            if self.grid[row][col] == '#':
+                                black_squares_count -= 1
+                            self.grid[row][col] = ' '
+                elif odd_rows:  #Odd number of rows, even number of columns
+                    row = self.size[0] // 2
+                    for col in range(self.size[1]):
+                        if self.grid[row][col] == '#':
+                            black_squares_count -= 1
+                        self.grid[row][col] = ' '
+                elif odd_cols:  #Even number of rows, odd number of columns
+                    col = self.size[1] // 2
+                    for row in range(self.size[0]):
+                        if self.grid[row][col] == '#':
+                            black_squares_count -= 1
+                        self.grid[row][col] = ' '
+
+            
             self.num_black_squares = black_squares_count
             self.black_square_proportion = round(black_squares_count / total_cells, 3)
 
         #If the number of black squares exceeds the maximum allowed, reset and try again
         if black_squares_count > max_black_squares:
+            print("Exceeded maximum number of black squares. Resetting...")
             self.reset()
             return self.generate_black_squares()
-
+        
+        #If no black squares in row 3 and column 3, reset and try again
+        if self.black_islands_in_row(2) == 0 and self.black_islands_in_col(2) == 0:
+            print("No black squares in row 3 and column 3. Resetting...")
+            self.reset()
+            return self.generate_black_squares()
+        elif self.black_islands_in_row(2) == 0:
+            if random.random() < 0.75:
+                print("No black squares in row 3. Resetting...")
+                self.reset()
+                return self.generate_black_squares()
+        elif self.black_islands_in_col(2) == 0:
+            if random.random() < 0.75:
+                print("No black squares in column 3. Resetting...")
+                self.reset()
+                return self.generate_black_squares()
+        
         self.update_words()  # Update the words after placing black squares"""
+        
+        if len(self.across_words) + len(self.down_words) > max_word_count:
+            print("Exceeded maximum number of words. Resetting...")
+            self.reset()
+            return self.generate_black_squares()
+        
         return True
 
     def place_edge_black_squares(self):
@@ -325,7 +389,7 @@ class CrosswordGrid:
                         word_count += 1
                         across_word = True
                         word, word_length = self.get_word(row, col, 'across', length=True)
-                        self.across_words[str(word_count) + 'A'] = CrosswordWord(row, col, 'across', word=word, word_length=word_length)
+                        self.across_words[str(word_count) + 'A'] = (CrosswordWord(row, col, 'across', word=word, word_length=word_length))
                     
                     #Check down words
                     if not self.in_grid(up[0], up[1]) or self.grid[up[0]][up[1]] == '#':
@@ -333,7 +397,7 @@ class CrosswordGrid:
                         if not across_word:
                             word_count += 1
                         word, word_length = self.get_word(row, col, 'down', length=True)
-                        self.down_words[str(word_count) + 'D'] = CrosswordWord(row, col, 'down', word=word, word_length=word_length)
+                        self.down_words[str(word_count) + 'D'] = (CrosswordWord(row, col, 'down', word=word, word_length=word_length))
                     across_word = False  # Reset across word flag for the next cell
 
     def get_word(self, row, col, direction, length=False):

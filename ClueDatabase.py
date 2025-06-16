@@ -59,7 +59,7 @@ class ClueDict():
         """Reads in words and clues from ClueDict.csv and stores them in a dictionary. Assumes 
         that the CSV file contains two columns: the first column is the word in all caps
         and the second column is the clue."""
-        
+
         self.clue_dict = {}
 
         with open("ClueDict.csv", "r") as file:
